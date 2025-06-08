@@ -10,27 +10,26 @@ rm <filename> - удаляет файл
 
 dirname = os.path.join(os.getcwd(), 'docs')
 
+def is_safe_path(basedir, path):
+    return os.path.realpath(path).startswith(os.path.realpath(basedir))
+
 def process(req):
-    # ... previous commands ...
-    elif req == 'upload':
-        conn.send('READY'.encode())
-        fileinfo = conn.recv(1024).decode().split(':', 1)
-        filename, filesize = fileinfo[0], int(fileinfo[1])
-        with open(os.path.join(dirname, filename), 'wb') as f:
-            received = 0
-            while received < filesize:
-                data = conn.recv(1024)
-                f.write(data)
-                received += len(data)
-        return f'File {filename} uploaded'
-    elif req.startswith('download '):
-        filename = req.split()[1]
-        try:
-            filesize = os.path.getsize(os.path.join(dirname, filename))
-            conn.send(f'{filename}:{filesize}'.encode())
-            with open(os.path.join(dirname, filename), 'rb') as f:
-                conn.sendfile(f)
-            return 'File sent'
-        except:
-            return 'File not found'
-    return 'bad request'
+    try:
+        if req == 'pwd':
+            return dirname
+        elif req == 'ls':
+            return '; '.join(os.listdir(dirname))
+        elif req.startswith('cat '):
+            filename = req.split()[1]
+            filepath = os.path.join(dirname, filename)
+            if not is_safe_path(dirname, filepath):
+                return 'Access denied'
+            try:
+                with open(filepath, 'r') as f:
+                    return f.read()
+            except:
+                return 'File not found'
+        # Add similar checks for all file operations
+        # ...
+    except Exception as e:
+        return f'Error: {str(e)}'
